@@ -10,9 +10,16 @@ import Landing from './pages/Landing.jsx';
 import NotFound from './pages/NotFound.jsx';
 import Blogs from './pages/Blogs.jsx';
 import BlogDetail from './pages/BlogDetail.jsx';
+import WriteBlog from './pages/WriteBlog.jsx';
+import EditBlog from './pages/EditBlog.jsx';
 import { logout, getSession } from './utils/auth.js';
 
-const protectedViews = { '/blogs': Blogs, '/blog/:id': BlogDetail };
+const protectedViews = {
+  '/blogs': Blogs,
+  '/blog/:id': BlogDetail,
+  '/write': WriteBlog,
+  '/edit/:id': EditBlog,
+};
 
 const footerLinks = [
   { to: '/', label: 'Home' },
