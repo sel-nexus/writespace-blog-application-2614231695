@@ -201,27 +201,28 @@ describe('working discovery shell', () => {
     expect(localStorage.length).toBe(0);
   });
 
-  it.each([['Start Reading', '/blogs'], ['Get Started Free', '/register'], ['View all blogs', '/blogs']])(
-    'navigates only after clicking %s and returns safely from fallback', async (name, path) => {
+  it.each([['Start Reading', '/login', 'Sign in'], ['Get Started Free', '/register', 'Create account'],
+    ['View all blogs', '/login', 'Sign in']])(
+    'navigates only after clicking %s through identity routes and returns safely home', async (name, path, heading) => {
       const actor = userEvent.setup();
       render(<App />);
       expect(window.location.pathname).toBe('/');
       await actor.click(screen.getByRole('link', { name }));
       expect(window.location.pathname).toBe(path);
-      expect(screen.getByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
-      await actor.click(screen.getByRole('link', { name: 'Back to Home' }));
+      expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+      await actor.click(within(screen.getByRole('navigation', { name: 'Primary' })).getByRole('link', { name: 'Home' }));
       expect(window.location.pathname).toBe('/');
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Your thoughts. Your space. Beautifully simple.');
     },
   );
 
-  it('links preview to its future route without persisting or exposing full text', async () => {
+  it('guards a clicked preview with login without persisting or exposing full text', async () => {
     const actor = userEvent.setup();
     seed(POSTS_KEY, [post]);
     render(<App />);
     await actor.click(screen.getByRole('link', { name: post.title }));
-    expect(window.location.pathname).toBe(`/blog/${post.id}`);
-    expect(screen.getByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/login');
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
     expect(localStorage.getItem(POSTS_KEY)).toBe(JSON.stringify([post]));
   });
 
