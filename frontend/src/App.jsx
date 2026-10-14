@@ -13,6 +13,7 @@ import BlogDetail from './pages/BlogDetail.jsx';
 import WriteBlog from './pages/WriteBlog.jsx';
 import EditBlog from './pages/EditBlog.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
+import Users from './pages/Users.jsx';
 import { logout, getSession } from './utils/auth.js';
 
 const protectedViews = {
@@ -21,6 +22,7 @@ const protectedViews = {
   '/write': WriteBlog,
   '/edit/:id': EditBlog,
   '/admin': AdminDashboard,
+  '/users': Users,
 };
 
 const footerLinks = [

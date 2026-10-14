@@ -133,8 +133,7 @@ test('real admin login shows exact counts/newest five, writes via quick action, 
     await visitDashboard(page);
     await page.getByRole('navigation', { name: 'Quick actions' }).getByRole('link', { name: 'Manage users', exact: true }).click();
     await expect(page).toHaveURL(/\/users$/);
-    // Account management intentionally remains the next slice's guarded fallback.
-    await expect(page.getByRole('heading', { name: 'Page not found', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Manage users', exact: true })).toBeVisible();
     expect(await stored(page)).toEqual(before);
   },
 );

@@ -150,7 +150,7 @@ describe('dashboard rendering and explicit quick actions', () => {
   it.each([
     ['Write a post', '/write', 'Write a post'],
     ['All Blogs', '/blogs', 'All Blogs'],
-    ['Manage users', '/users', 'Page not found'],
+    ['Manage users', '/users', 'Manage users'],
   ])('navigates only when quick action %s is activated', async (label, path, heading) => {
     seed();
     enter();
