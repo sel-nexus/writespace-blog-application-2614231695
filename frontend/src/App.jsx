@@ -8,7 +8,11 @@ import { Navbar } from './components/Navbar.jsx';
 import { Notice } from './components/Notice.jsx';
 import Landing from './pages/Landing.jsx';
 import NotFound from './pages/NotFound.jsx';
+import Blogs from './pages/Blogs.jsx';
+import BlogDetail from './pages/BlogDetail.jsx';
 import { logout, getSession } from './utils/auth.js';
+
+const protectedViews = { '/blogs': Blogs, '/blog/:id': BlogDetail };
 
 const footerLinks = [
   { to: '/', label: 'Home' },
@@ -100,17 +104,20 @@ function Shell() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login onSessionChange={handleSessionChange} />} />
             <Route path="/register" element={<Register onSessionChange={handleSessionChange} />} />
-            {['/blogs', '/blog/:id', '/write', '/edit/:id', '/admin', '/users'].map((path) => (
-              <Route
-                key={path}
-                path={path}
-                element={(
-                  <ProtectedRoute adminOnly={path === '/admin' || path === '/users'}>
-                    <NotFound />
-                  </ProtectedRoute>
-                )}
-              />
-            ))}
+            {['/blogs', '/blog/:id', '/write', '/edit/:id', '/admin', '/users'].map((path) => {
+              const View = protectedViews[path] ?? NotFound;
+              return (
+                <Route
+                  key={path}
+                  path={path}
+                  element={(
+                    <ProtectedRoute adminOnly={path === '/admin' || path === '/users'}>
+                      <View />
+                    </ProtectedRoute>
+                  )}
+                />
+              );
+            })}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

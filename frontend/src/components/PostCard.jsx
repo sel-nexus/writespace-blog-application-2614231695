@@ -1,19 +1,24 @@
-/** Render a plain-text preview with no data mutation or ownership controls. */
+/** Render a plain-text preview with optional explicit owner/admin management controls. */
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { RoleAvatar } from './RoleAvatar.jsx';
 import { DEMO_ADMIN } from '../utils/storage.js';
 import { excerpt, formatDate } from '../utils/postPresentation.js';
+import { canManagePost } from '../utils/permissions.js';
 
 /**
- * Present a validated post and link to its future protected detail route.
+ * Present a validated post and its protected detail link.
  * Args:
  *   post: Post record containing id, title, content, createdAt, authorId, authorName.
  *   authorRole: Optional known role; synthetic admin authors always use admin.
+ *   session: Optional resolved identity; absent by default so public previews have no controls.
+ *   onDelete: Optional parent callback receiving the post ID on explicit activation.
  * Returns:
- *   An article with escaped preview text, author, and publication date.
+ *   Escaped preview, author/date, and optional authorized Edit link/Delete button.
+ * Notes:
+ *   Persistence and confirmation belong to the parent's deletion service, not this card.
  */
-export function PostCard({ post, authorRole = 'user' }) {
+export function PostCard({ post, authorRole = 'user', session = null, onDelete }) {
   const role = post.authorId === DEMO_ADMIN.userId ? 'admin' : authorRole;
   return (
     <article
@@ -39,6 +44,21 @@ export function PostCard({ post, authorRole = 'user' }) {
           {post.authorName}
         </span>
       </div>
+      {canManagePost(session, post) && (
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link to={`/edit/${post.id}`} className="rounded-full border border-border px-4 py-2 font-bold hover:bg-surface-raised">
+            Edit
+          </Link>
+          <button
+            type="button"
+            disabled={!onDelete}
+            onClick={() => onDelete(post.id)}
+            className="rounded-full px-4 py-2 font-bold text-error hover:bg-error-light disabled:opacity-50 focus-visible:outline-ring"
+          >
+            Delete
+          </button>
+        </div>
+      )}
     </article>
   );
 }
@@ -53,4 +73,11 @@ PostCard.propTypes = {
     authorName: PropTypes.string.isRequired,
   }).isRequired,
   authorRole: PropTypes.oneOf(['user', 'admin']),
+  session: PropTypes.shape({
+    userId: PropTypes.string.isRequired,
+    username: PropTypes.string.isRequired,
+    displayName: PropTypes.string.isRequired,
+    role: PropTypes.oneOf(['user', 'admin']).isRequired,
+  }),
+  onDelete: PropTypes.func,
 };
