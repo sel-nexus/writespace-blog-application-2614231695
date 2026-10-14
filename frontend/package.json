@@ -1,0 +1,34 @@
+{
+  "name": "writespace-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node node_modules/vite/bin/vite.js",
+    "build": "node node_modules/vite/bin/vite.js build",
+    "preview": "node node_modules/vite/bin/vite.js preview",
+    "test": "node node_modules/vitest/vitest.mjs run",
+    "test:discovery": "node node_modules/vitest/vitest.mjs run tests/discovery.test.jsx tests/storage.test.js tests/postPresentation.test.js",
+    "test:e2e": "node node_modules/@playwright/test/cli.js test"
+  },
+  "dependencies": {
+    "@phosphor-icons/react": "2.1.7",
+    "prop-types": "15.8.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.30.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1",
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.8",
+    "@vitejs/plugin-react": "4.7.0",
+    "autoprefixer": "10.6.1",
+    "jsdom": "26.1.0",
+    "postcss": "8.5.30",
+    "tailwindcss": "3.4.19",
+    "vite": "6.4.4",
+    "vitest": "3.2.7"
+  }
+}

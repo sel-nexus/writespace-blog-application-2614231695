@@ -1,0 +1,12 @@
+.git
+.gitignore
+node_modules
+dist
+build
+.venv
+__pycache__
+*.pyc
+.env
+.env.*
+!.env.example
+# NEVER ignore nginx.conf — the Dockerfile COPYs it
