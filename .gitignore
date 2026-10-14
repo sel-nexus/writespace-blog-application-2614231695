@@ -19,3 +19,7 @@ publish_manifest.yaml
 test_report.yaml
 graphify-out/cache/
 graphify-out/cost.json
+graphify-out/.graphify*
+graphify-out/GRAPH_REPORT.md
+graphify-out/graph.html
+browser_evidence.zip

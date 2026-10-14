@@ -417,6 +417,56 @@ describe('real account route and reusable rows', () => {
     expect(window.location.pathname).toBe('/users');
   });
 
+  it.each(['corrupt', 'unavailable'])('successful create followed by %s refresh keeps persisted data but renders safe empty rows', async (fault) => {
+    const actor = userEvent.setup();
+    const before = seed();
+    generation();
+    renderApp();
+    await fillForm(actor, 'admin');
+    const originalGet = Storage.prototype.getItem;
+    const originalSet = Storage.prototype.setItem;
+    let accountSaved = false;
+    const blocked = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function getItem(key) {
+      if (key === USERS_KEY && accountSaved) {
+        if (fault === 'corrupt') return '{broken';
+        throw new DOMException('Blocked', 'SecurityError');
+      }
+      return originalGet.call(this, key);
+    });
+    const writes = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function setItem(key, value) {
+      originalSet.call(this, key, value);
+      if (key === USERS_KEY) accountSaved = true;
+    });
+    await actor.click(screen.getByRole('button', { name: 'Create account', exact: true }));
+    const expected = JSON.stringify([user, admin, {
+      id, displayName: 'New Writer', username: 'new', password: input.password, role: 'admin', createdAt: time,
+    }]);
+    expect(accountSaved).toBe(true);
+    expect(writes).toHaveBeenCalledExactlyOnceWith(USERS_KEY, expected);
+    expect(screen.getByText(STORAGE_WARNING, { exact: true })).toBeInTheDocument();
+    expect(screen.getByText(/Registered accounts unavailable/)).toBeInTheDocument();
+    expect(screen.queryByText(/\d+ registered accounts/)).not.toBeInTheDocument();
+    expect(screen.queryByText('No registered accounts yet.')).not.toBeInTheDocument();
+    expect(table().getAllByRole('row')).toHaveLength(2);
+    expect(row('admin').getByText('Built-in')).toBeInTheDocument();
+    expect(within(screen.getByLabelText('Mobile accounts')).getAllByRole('article')).toHaveLength(1);
+    for (const username of ['jamie', 'robin', 'new']) {
+      expect(screen.queryByRole('button', { name: `Delete ${username}`, exact: true })).not.toBeInTheDocument();
+    }
+    for (const button of screen.getAllByRole('button', { name: /^(Create account|Delete )/ })) expect(button).toBeDisabled();
+    for (const [label, value] of [['Display name', input.displayName], ['Username', input.username], ['Password', input.password], ['Role', 'admin']]) {
+      expect(screen.getByLabelText(label, { exact: true })).toHaveValue(value);
+    }
+    expect(screen.getByText('Account created. Your current sign-in has not changed.')).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/users');
+    blocked.mockRestore();
+    writes.mockRestore();
+    expect(rawState()).toEqual([expected, ...before.slice(1)]);
+    expect(readCollection(USERS_KEY).value.at(-1)).toEqual({
+      id, displayName: 'New Writer', username: 'new', password: input.password, role: 'admin', createdAt: time,
+    });
+  });
+
   it('shows associated required errors and retains values on duplicate and reserved errors', async () => {
     const actor = userEvent.setup();
     const before = seed();
@@ -496,21 +546,37 @@ describe('real account route and reusable rows', () => {
     expect(window.location.pathname).toBe('/users');
   });
 
-  it.each(['create', 'delete'])('late unreadable users during %s preserve snapshot and disable all mutations', async (kind) => {
-    const actor = userEvent.setup();
-    seed();
-    renderApp();
-    if (kind === 'create') await fillForm(actor);
-    localStorage.setItem(USERS_KEY, '{broken');
-    const before = rawState();
-    await actor.click(kind === 'create' ? screen.getByRole('button', { name: 'Create account', exact: true }) : row('jamie').getByRole('button'));
-    expect(screen.getByText(STORAGE_WARNING)).toBeInTheDocument();
-    expect(row('jamie').getByText('Jamie Writer')).toBeInTheDocument();
-    expect(row('jamie').getByRole('button')).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Create account', exact: true })).toBeDisabled();
-    expect(rawState()).toEqual(before);
-    expect(window.location.pathname).toBe('/users');
-  });
+  it.each(['create', 'delete'].flatMap((kind) => ['corrupt', 'unavailable'].map((fault) => [kind, fault])))(
+    'late %s with %s users renders safe empty rows and disables all mutations', async (kind, fault) => {
+      const actor = userEvent.setup();
+      seed();
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      renderApp();
+      await fillForm(actor, 'admin');
+      if (fault === 'corrupt') localStorage.setItem(USERS_KEY, '{broken');
+      const before = rawState();
+      const blocked = fault === 'unavailable' ? failRead(USERS_KEY) : null;
+      await actor.click(kind === 'create' ? screen.getByRole('button', { name: 'Create account', exact: true }) : row('jamie').getByRole('button'));
+      expect(screen.getByText(STORAGE_WARNING, { exact: true })).toBeInTheDocument();
+      expect(screen.getByText(/Registered accounts unavailable/)).toBeInTheDocument();
+      expect(screen.queryByText(/\d+ registered accounts/)).not.toBeInTheDocument();
+      expect(screen.queryByText('No registered accounts yet.')).not.toBeInTheDocument();
+      expect(table().getAllByRole('row')).toHaveLength(2);
+      expect(row('admin').getByText('Built-in')).toBeInTheDocument();
+      expect(within(screen.getByLabelText('Mobile accounts')).getAllByRole('article')).toHaveLength(1);
+      for (const username of ['jamie', 'robin']) {
+        expect(screen.queryByRole('button', { name: `Delete ${username}`, exact: true })).not.toBeInTheDocument();
+      }
+      for (const button of screen.getAllByRole('button', { name: /^(Create account|Delete )/ })) expect(button).toBeDisabled();
+      for (const [label, value] of [['Display name', input.displayName], ['Username', input.username], ['Password', input.password], ['Role', 'admin']]) {
+        expect(screen.getByLabelText(label, { exact: true })).toHaveValue(value);
+      }
+      expect(confirm).not.toHaveBeenCalled();
+      blocked?.mockRestore();
+      expect(rawState()).toEqual(before);
+      expect(window.location.pathname).toBe('/users');
+    },
+  );
 
   it.each(['corrupt', 'unavailable'])('initial %s users show a safe empty warning and disabled mutations', (fault) => {
     seed();

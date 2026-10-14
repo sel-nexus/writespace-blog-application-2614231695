@@ -60,6 +60,14 @@ function Shell() {
   useEffect(() => {
     setSessionRead(getSession());
     setLogoutFailed(false);
+    const titles = {
+      '/': 'WriteSpace', '/login': 'Sign in', '/register': 'Create account',
+      '/blogs': 'All Blogs', '/write': 'Write a post', '/admin': 'Admin dashboard', '/users': 'Manage users',
+    };
+    const title = titles[location.pathname]
+      ?? (location.pathname.startsWith('/blog/') ? 'Read post'
+        : location.pathname.startsWith('/edit/') ? 'Edit post' : 'Page not found');
+    document.title = title === 'WriteSpace' ? title : `${title} | WriteSpace`;
   }, [location.key, location.pathname]);
 
   /**

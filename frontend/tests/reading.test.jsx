@@ -137,6 +137,16 @@ const malformed = [
     expect(JSON.parse(localStorage.getItem(USERS_KEY))).toEqual([user, admin]);
   });
 
+  it('preserves surviving storage order while returning newest-first display data', () => {
+    const older = makePost(1);
+    const newer = makePost(3);
+    seed([older, post, newer]);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    expect(deletePost(post.id, session)).toEqual({ ok: true, value: [newer, older] });
+    expect(JSON.parse(localStorage.getItem(POSTS_KEY))).toEqual([older, newer]);
+    expect(readPosts().value).toEqual([newer, older]);
+  });
+
   it('leaves all storage unchanged when confirmation is declined', () => {
     seed();
     const before = localStorage.getItem(POSTS_KEY);
@@ -484,14 +494,19 @@ const malformed = [
     expect(confirm).not.toHaveBeenCalled();
   });
 
-  it('leaves unimplemented editor route as guarded fallback and edit link navigates correctly', async () => {
+  it('navigates from list Edit link to the prefilled editor without mutating storage', async () => {
     seed();
+    const storageKeys = [POSTS_KEY, SESSION_KEY, USERS_KEY];
+    const before = storageKeys.map((key) => localStorage.getItem(key));
     const actor = userEvent.setup();
     renderApp();
     await actor.click(screen.getByRole('link', { name: 'Edit', exact: true }));
     expect(window.location.pathname).toBe(`/edit/${post.id}`);
-    expect(screen.getByRole('heading', { name: 'Page not found' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Edit post', exact: true })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Title', exact: true })).toHaveValue(post.title);
+    expect(screen.getByRole('textbox', { name: 'Content', exact: true })).toHaveValue(post.content);
     expect(readPosts().value).toEqual([post]);
+    expect(storageKeys.map((key) => localStorage.getItem(key))).toEqual(before);
   });
 
   it('keeps public landing previews unmanaged even for signed-in admin', () => {

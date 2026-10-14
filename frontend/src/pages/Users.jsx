@@ -13,9 +13,9 @@ const fixedAdmin = { id: DEMO_ADMIN.userId, ...DEMO_ADMIN };
 /**
  * Render the guarded account workflow with an explicit failed-read state.
  * Returns:
- *   Role-aware creation, desktop table and mobile cards; only persisted success resets input or changes rows.
+ *   Role-aware creation, desktop table and mobile cards; failed collection reads render safe empty registered rows.
  * Notes:
- *   Route guards own entry. A late failure preserves the snapshot and route while disabling unsafe mutations.
+ *   Route guards own entry. Failed writes preserve rows; failed reads preserve input and route while disabling mutations.
  */
 export default function Users() {
   const [usersRead, setUsersRead] = useState(null);
@@ -29,33 +29,34 @@ export default function Users() {
     setSessionRead(getSession());
   }, []);
 
-  /** Preserve the last list on a failed fresh read and disable further mutations. */
+  /** Render the fresh collection result, including safe empty rows on failure. */
   function refreshUsers() {
     const fresh = readCollection(USERS_KEY);
-    setUsersRead((previous) => fresh.ok ? fresh : { ...fresh, value: previous?.value ?? [] });
+    setUsersRead(fresh);
     setSessionRead(getSession());
     if (!fresh.ok) setReadFailed(true);
+    return fresh;
   }
 
-  /** Handle a mutation failure without clearing fields, changing rows or navigating. */
+  /** Preserve fields and route on failure; retain rows only when collection reads succeed. */
   function handleFailure(result, action) {
     setMessage('');
     if (result.readFailed) {
       setReadFailed(true);
-      setSessionRead(getSession());
+      refreshUsers();
     }
     if (result.code !== 'validation') {
       setError(result.code === 'not-found' ? 'Account not found.' : `Account could not be ${action}. Nothing was saved.`);
     }
   }
 
-  /** Create on explicit submission and reset the shared form only after persisted success. */
+  /** Create on explicit submission and reset fields only after persistence and refresh succeed. */
   function handleCreate(form) {
     setError('');
     const result = createUser(form, sessionRead.value);
     if (result.ok) {
-      refreshUsers();
-      setFormKey((key) => key + 1);
+      const fresh = refreshUsers();
+      if (fresh.ok) setFormKey((key) => key + 1);
       setMessage('Account created. Your current sign-in has not changed.');
     } else {
       handleFailure(result, 'created');

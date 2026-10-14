@@ -1,5 +1,6 @@
 /** Capture browser errors before entry and seed isolated real localStorage fixtures. */
 import { test as base, expect } from '@playwright/test';
+import { writeFile } from 'node:fs/promises';
 
 export const test = base.extend({
   browserErrors: [async ({ page }, use) => {
@@ -33,10 +34,13 @@ export async function captureView(page, testInfo, name) {
   await testInfo.attach(`${name}-accessibility`, {
     body: JSON.stringify(accessibility, null, 2), contentType: 'application/json',
   });
-  const styles = await page.locator('h1').evaluate((element) => {
-    const heading = getComputedStyle(element);
+  const styles = await page.locator('main').evaluate((element) => {
+    const heading = getComputedStyle(element.querySelector('h1') ?? element);
     const root = getComputedStyle(document.querySelector('main').parentElement);
     return { headingFont: heading.fontFamily, headingSize: heading.fontSize, background: root.backgroundColor };
   });
   await testInfo.attach(`${name}-styles`, { body: JSON.stringify(styles, null, 2), contentType: 'application/json' });
+  await writeFile(testInfo.outputPath(`${name}.html`), await page.content());
+  await writeFile(testInfo.outputPath(`${name}-accessibility.json`), JSON.stringify(accessibility, null, 2));
+  await writeFile(testInfo.outputPath(`${name}-styles.json`), JSON.stringify(styles, null, 2));
 }

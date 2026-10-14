@@ -138,6 +138,73 @@ test('real admin login shows exact counts/newest five, writes via quick action, 
   },
 );
 
+test('recent title opens exact full detail and returns through Dashboard without changing storage', async ({ page }) => {
+  const target = { ...makePost(6), content: `Exact selected story\n${'Full content beyond the card preview. '.repeat(12)}\nFinal detail line.` };
+  const posts = [makePost(7), target, makePost(5)];
+  const users = [user, admin];
+  await seedLocalData(page, {
+    writespace_posts: JSON.stringify(posts), writespace_users: JSON.stringify(users),
+    writespace_session: JSON.stringify(demoSession),
+  });
+  await page.goto('/admin');
+  const before = { posts, users, session: demoSession };
+  const card = page.getByRole('article').filter({ has: page.getByRole('heading', { name: target.title, exact: true }) });
+  await card.getByRole('link', { name: target.title, exact: true }).click();
+  await expect(page).toHaveURL(`/blog/${target.id}`);
+  const detail = page.getByRole('article');
+  await expect(detail.getByRole('heading', { name: target.title, exact: true })).toBeVisible();
+  expect(await detail.locator('p').textContent()).toBe(target.content);
+  await expect(detail.getByText(target.authorName, { exact: true })).toBeVisible();
+  await expect(detail.locator('time')).toHaveAttribute('datetime', target.createdAt);
+  expect(await stored(page)).toEqual(before);
+  await visitDashboard(page);
+  await expect(page.getByRole('heading', { name: 'Admin dashboard', exact: true })).toBeVisible();
+  await expect(metric(page, 'Total Posts')).toHaveText('3');
+  await expect(page.locator('article h3')).toHaveText([posts[0].title, target.title, posts[2].title]);
+  expect(await stored(page)).toEqual(before);
+});
+
+for (const action of ['Save', 'Cancel']) {
+  test(`recent Edit opens exact prefilled record and ${action} preserves identity/time/authorship`, async ({ page }) => {
+    const target = makePost(6);
+    const posts = [makePost(7), target, makePost(5)];
+    const users = [user, admin];
+    await seedLocalData(page, {
+      writespace_posts: JSON.stringify(posts), writespace_users: JSON.stringify(users),
+      writespace_session: JSON.stringify(demoSession),
+    });
+    await page.goto('/admin');
+    const before = { posts, users, session: demoSession };
+    const rawBefore = await page.evaluate(() => localStorage.getItem('writespace_posts'));
+    const card = page.getByRole('article').filter({ has: page.getByRole('heading', { name: target.title, exact: true }) });
+    await card.getByRole('link', { name: 'Edit', exact: true }).click();
+    await expect(page).toHaveURL(`/edit/${target.id}`);
+    await expect(page.getByRole('heading', { name: 'Edit post', exact: true })).toBeVisible();
+    await expect(page.getByLabel('Title', { exact: true })).toHaveValue(target.title);
+    await expect(page.getByLabel('Content', { exact: true })).toHaveValue(target.content);
+    expect(await stored(page)).toEqual(before);
+    const changes = { title: 'Selected recent story revised', content: 'Exact revised recent story\nSecond saved line.' };
+    await page.getByLabel('Title', { exact: true }).fill(changes.title);
+    await page.getByLabel('Content', { exact: true }).fill(changes.content);
+    expect(await stored(page)).toEqual(before);
+    await page.getByRole('button', { name: action, exact: true }).click();
+    await expect(page).toHaveURL(`/blog/${target.id}`);
+    const expectedPost = action === 'Save' ? { ...target, ...changes } : target;
+    const expectedState = { ...before, posts: posts.map((record) => record.id === target.id ? expectedPost : record) };
+    const detail = page.getByRole('article');
+    await expect(detail.getByRole('heading', { name: expectedPost.title, exact: true })).toBeVisible();
+    expect(await detail.locator('p').textContent()).toBe(expectedPost.content);
+    await expect(detail.locator('time')).toHaveAttribute('datetime', target.createdAt);
+    await expect(detail.getByText(target.authorName, { exact: true })).toBeVisible();
+    expect(await stored(page)).toEqual(expectedState);
+    if (action === 'Cancel') expect(await page.evaluate(() => localStorage.getItem('writespace_posts'))).toBe(rawBefore);
+    await visitDashboard(page);
+    await expect(metric(page, 'Total Posts')).toHaveText('3');
+    await expect(page.locator('article h3')).toHaveText([posts[0].title, expectedPost.title, posts[2].title]);
+    expect(await stored(page)).toEqual(expectedState);
+  });
+}
+
 test('guest direct admin entry redirects through the real guard without changing local records', async ({ page }) => {
   const posts = [makePost(1)];
   await seedLocalData(page, { writespace_posts: JSON.stringify(posts), writespace_users: JSON.stringify([user]) });

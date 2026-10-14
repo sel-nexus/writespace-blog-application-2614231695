@@ -6,7 +6,6 @@ import { PostCard } from '../components/PostCard.jsx';
 import { adminMetrics } from '../utils/adminMetrics.js';
 import { getSession } from '../utils/auth.js';
 import { deletePost, getAuthorRole, readPosts } from '../utils/posts.js';
-import { sortPosts } from '../utils/postPresentation.js';
 import { DEMO_ADMIN, readCollection, USERS_KEY } from '../utils/storage.js';
 
 const quickActions = [
@@ -27,7 +26,7 @@ const metricLabels = [
  *   Four approved counts, demo disclaimer, explicit quick links, and newest-five post cards.
  * Notes:
  *   The external route guard owns entry. Failed mutations preserve this route and snapshot;
- *   fresh failed reads invalidate counts and controls without discarding the previous preview.
+ *   fresh failed reads empty affected previews and invalidate their counts and controls.
  */
 export default function AdminDashboard() {
   const [postsRead, setPostsRead] = useState(null);
@@ -57,7 +56,7 @@ export default function AdminDashboard() {
       setReadFailure(true);
       const freshPosts = readPosts();
       const freshUsers = readCollection(USERS_KEY);
-      setPostsRead((previous) => freshPosts.ok ? freshPosts : { ...freshPosts, value: previous.value });
+      setPostsRead(freshPosts);
       setUsersRead(freshUsers);
       setSessionRead(getSession());
       setError('');
@@ -77,7 +76,7 @@ export default function AdminDashboard() {
   const session = sessionRead.ok && sessionRead.value?.role === 'admin' ? sessionRead.value : null;
   const controlsAvailable = !readFailure && postsRead.ok && Boolean(session)
     && (usersRead.ok || session.userId === DEMO_ADMIN.userId);
-  const recent = postsRead.ok ? metrics.recentPosts : sortPosts(postsRead.value).slice(0, 5);
+  const recent = metrics.recentPosts;
 
   return (
     <section aria-labelledby="dashboard-heading" className="mx-auto max-w-6xl px-6 py-12 sm:py-16">

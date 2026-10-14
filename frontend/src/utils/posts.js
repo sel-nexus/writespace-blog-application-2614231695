@@ -145,7 +145,7 @@ export function getAuthorRole(post, users = []) {
  */
 export function deletePost(id, session) {
   if (typeof id !== 'string' || !id.trim()) return { ok: false, code: 'invalid-id' };
-  const posts = readPosts();
+  const posts = readCollection(POSTS_KEY);
   if (!posts.ok) return { ok: false, code: posts.code, readFailed: true };
   const post = posts.value.find((record) => record.id === id);
   if (!post) return { ok: false, code: 'not-found' };
@@ -157,5 +157,5 @@ export function deletePost(id, session) {
   if (!window.confirm('Delete this post? This cannot be undone.')) return { ok: false, code: 'cancelled' };
   const value = posts.value.filter((record) => record.id !== id);
   const saved = writeValue(POSTS_KEY, value);
-  return saved.ok ? { ok: true, value } : saved;
+  return saved.ok ? { ok: true, value: sortPosts(value) } : saved;
 }

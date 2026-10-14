@@ -25,7 +25,7 @@ export default defineConfig({
     command: 'node node_modules/vite/bin/vite.js build '
       + `&& node node_modules/vite/bin/vite.js preview --host ${host} --port ${port} --strictPort`,
     url: previewURL,
-    reuseExistingServer: false,
+    reuseExistingServer: true,
     timeout: 120000,
   },
 });

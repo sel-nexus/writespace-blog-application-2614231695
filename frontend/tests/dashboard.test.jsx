@@ -302,22 +302,50 @@ describe('dashboard deletion and admin boundaries via App', () => {
     expect(readPosts().value).toEqual([post]);
   });
 
-  it('retains the preview but marks failed fresh posts unavailable and removes mutations', async () => {
+  it('empties affected previews on sustained fresh posts read failure without changing raw data', async () => {
     seed();
+    const before = [POSTS_KEY, USERS_KEY, SESSION_KEY].map((key) => localStorage.getItem(key));
     enter();
     const confirm = vi.spyOn(window, 'confirm');
     const fault = failRead(POSTS_KEY);
     await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(window.location.pathname).toBe('/admin');
-    expect(screen.getByRole('article')).toBeVisible();
+    expect(screen.queryByRole('article')).not.toBeInTheDocument();
     expect(metric('Total Posts')).toHaveTextContent('Unavailable');
+    expect(metric('Published Posts')).toHaveTextContent('Unavailable');
     expect(metric('Registered Users')).toHaveTextContent(/^2$/);
+    expect(metric('Drafts')).toHaveTextContent(/^0$/);
     expect(screen.getByText(STORAGE_WARNING)).toBeVisible();
+    expect(screen.queryByText('No posts yet — check back soon!')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument();
     expect(confirm).not.toHaveBeenCalled();
     fault.mockRestore();
+    expect([POSTS_KEY, USERS_KEY, SESSION_KEY].map((key) => localStorage.getItem(key))).toEqual(before);
     expect(readPosts().value).toEqual([post]);
+  });
+
+  it('empties affected previews when posts become corrupt after mounting without repairing any bytes', async () => {
+    seed();
+    enter();
+    expect(screen.getByRole('article')).toBeVisible();
+    const corrupt = JSON.stringify([post, { ...makePost(2), createdAt: 'invalid' }]);
+    localStorage.setItem(POSTS_KEY, corrupt);
+    const before = [POSTS_KEY, USERS_KEY, SESSION_KEY].map((key) => localStorage.getItem(key));
+    const confirm = vi.spyOn(window, 'confirm');
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(window.location.pathname).toBe('/admin');
+    expect(screen.queryByRole('article')).not.toBeInTheDocument();
+    expect(metric('Total Posts')).toHaveTextContent('Unavailable');
+    expect(metric('Published Posts')).toHaveTextContent('Unavailable');
+    expect(metric('Registered Users')).toHaveTextContent(/^2$/);
+    expect(metric('Drafts')).toHaveTextContent(/^0$/);
+    expect(screen.getByText(STORAGE_WARNING)).toBeVisible();
+    expect(screen.queryByText('No posts yet — check back soon!')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(confirm).not.toHaveBeenCalled();
+    expect([POSTS_KEY, USERS_KEY, SESSION_KEY].map((key) => localStorage.getItem(key))).toEqual(before);
   });
 
   it('denies a fresh unreadable registered admin identity without discarding the post snapshot', async () => {
