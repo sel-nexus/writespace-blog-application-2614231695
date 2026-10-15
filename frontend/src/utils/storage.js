@@ -2,6 +2,7 @@
 export const POSTS_KEY = 'writespace_posts';
 export const USERS_KEY = 'writespace_users';
 export const SESSION_KEY = 'writespace_session';
+export const INITIALIZATION_KEY = 'writespace_bootstrap_v1';
 export const DEMO_ADMIN = Object.freeze({
   userId: 'writespace-demo-admin',
   username: 'admin',
@@ -12,6 +13,8 @@ export const DEMO_ADMIN = Object.freeze({
 /** @typedef {{ok: true, value: Array, source: 'stored'|'missing'}|{ok: false, value: Array, code: string}} CollectionResult */
 /** @typedef {{ok: true, value: Object|null}|{ok: false, value: null, code: string}} SessionResult */
 /** @typedef {{ok: true}|{ok: false, code: string}} WriteResult */
+/** @typedef {{version: 1, initialized: true}} InitializationMarker */
+/** @typedef {{ok: true, value: InitializationMarker|null, source: 'stored'|'missing'}|{ok: false, value: null, code: 'storage-unavailable'|'invalid-json'|'invalid-shape'}} MarkerReadResult */
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -181,8 +184,54 @@ export function readSession() {
   return { ok: true, value: session };
 }
 
+/**
+ * Validate the supported marker without coercing values or accepting extra fields.
+ * Args:
+ *   value: Parsed initialization record.
+ * Returns:
+ *   Whether the record exactly matches the completion protocol.
+ */
+function isInitializationMarker(value) {
+  return isRecord(value) && Object.keys(value).length === 2
+    && value.version === 1 && value.initialized === true;
+}
+
+/**
+ * Read the marker without repairing malformed or inaccessible storage.
+ * Returns:
+ *   A missing/stored marker result, or an explicit failure with a null value.
+ */
+export function readInitializationMarker() {
+  let raw;
+  try {
+    raw = window.localStorage.getItem(INITIALIZATION_KEY);
+  } catch {
+    return { ok: false, value: null, code: 'storage-unavailable' };
+  }
+  if (raw === null) return { ok: true, value: null, source: 'missing' };
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return { ok: false, value: null, code: 'invalid-json' };
+  }
+  return isInitializationMarker(value)
+    ? { ok: true, value, source: 'stored' }
+    : { ok: false, value: null, code: 'invalid-shape' };
+}
+
+/**
+ * Persist completion only when the caller has safely handled the post collection.
+ * Returns:
+ *   The guarded WriteResult; quota and denied access never claim success.
+ */
+export function writeInitializationMarker() {
+  return writeValue(INITIALIZATION_KEY, { version: 1, initialized: true });
+}
+
 /** Check a write's shape without accessing storage. */
 function validValue(key, value) {
+  if (key === INITIALIZATION_KEY) return isInitializationMarker(value);
   if (key === SESSION_KEY) return isSession(value);
   return collectionError(key, value) === null;
 }
@@ -190,8 +239,8 @@ function validValue(key, value) {
 /**
  * Validate, serialize, revalidate, and persist exactly once.
  * Args:
- *   key: One of the three exported storage keys.
- *   value: Full collection or session matching that key's schema.
+ *   key: An exported collection, session, or initialization storage key.
+ *   value: A full collection, session, or completion marker matching that key's schema.
  * Returns:
  *   WriteResult with invalid-shape, serialization-failed, quota-exceeded, or storage-unavailable.
  * Notes:

@@ -9,7 +9,7 @@ import { Navbar } from '../src/components/Navbar.jsx';
 import { Notice, DEMO_MESSAGE, STORAGE_WARNING } from '../src/components/Notice.jsx';
 import { PostCard } from '../src/components/PostCard.jsx';
 import { RoleAvatar } from '../src/components/RoleAvatar.jsx';
-import { DEMO_ADMIN, POSTS_KEY, USERS_KEY, SESSION_KEY } from '../src/utils/storage.js';
+import { DEMO_ADMIN, POSTS_KEY, USERS_KEY, SESSION_KEY, INITIALIZATION_KEY } from '../src/utils/storage.js';
 import { makePost, post, session, user } from './fixtures.js';
 
 /** Render a shared component under the same warning-free router flags. */
@@ -191,6 +191,10 @@ describe('responsive navbar', () => {
 
 describe('working discovery shell', () => {
   it('shows exact footer destinations/year and skip navigation without future route stubs', () => {
+    // This shell-copy case represents an already initialized, intentionally empty store.
+    seed(POSTS_KEY, []);
+    seed(INITIALIZATION_KEY, { version: 1, initialized: true });
+    const before = { ...localStorage };
     render(<App />);
     const footer = screen.getByRole('navigation', { name: 'Footer' });
     for (const [name, href] of [['Home', '/'], ['All Blogs', '/blogs'], ['Login', '/login'], ['Register', '/register']]) {
@@ -198,7 +202,7 @@ describe('working discovery shell', () => {
     }
     expect(screen.getByText(`© ${new Date().getFullYear()} WriteSpace`)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Skip to content' })).toHaveAttribute('href', '#main-content');
-    expect(localStorage.length).toBe(0);
+    expect({ ...localStorage }).toEqual(before);
   });
 
   it.each([['Start Reading', '/login', 'Sign in'], ['Get Started Free', '/register', 'Create account'],
