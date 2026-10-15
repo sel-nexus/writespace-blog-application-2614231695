@@ -7,7 +7,7 @@ import { adminMetrics } from '../src/utils/adminMetrics.js';
 import { getSession, login, sessionForUser } from '../src/utils/auth.js';
 import { readPosts } from '../src/utils/posts.js';
 import { DEMO_MESSAGE, STORAGE_WARNING } from '../src/components/Notice.jsx';
-import { DEMO_ADMIN, POSTS_KEY, SESSION_KEY, USERS_KEY, readCollection } from '../src/utils/storage.js';
+import { DEMO_ADMIN, INITIALIZATION_KEY, POSTS_KEY, SESSION_KEY, USERS_KEY, readCollection } from '../src/utils/storage.js';
 import { makePost, post, secondUser, session, user } from './fixtures.js';
 
 const admin = { ...secondUser, role: 'admin' };
@@ -166,6 +166,8 @@ describe('dashboard rendering and explicit quick actions', () => {
   });
 
   it('shows verified missing zeros and clear recent empty copy without creating collections', () => {
+    // Missing posts after completed initialization are intentionally empty, not first use.
+    localStorage.setItem(INITIALIZATION_KEY, JSON.stringify({ version: 1, initialized: true }));
     expect(login('admin', 'admin').ok).toBe(true);
     enter();
     for (const label of ['Total Posts', 'Registered Users', 'Published Posts', 'Drafts']) {

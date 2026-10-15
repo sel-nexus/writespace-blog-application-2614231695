@@ -10,7 +10,7 @@ import { PostCard } from '../src/components/PostCard.jsx';
 import { STORAGE_WARNING } from '../src/components/Notice.jsx';
 import { sessionForUser } from '../src/utils/auth.js';
 import { deletePost, getAuthorRole, readPost, readPosts } from '../src/utils/posts.js';
-import { DEMO_ADMIN, POSTS_KEY, SESSION_KEY, USERS_KEY } from '../src/utils/storage.js';
+import { DEMO_ADMIN, INITIALIZATION_KEY, POSTS_KEY, SESSION_KEY, USERS_KEY } from '../src/utils/storage.js';
 import { makePost, post, secondUser, session, user } from './fixtures.js';
 
 /**
@@ -285,6 +285,7 @@ const malformed = [
 
   it.each(['missing', 'empty'])('presents ordinary %s list separately from read errors', (state) => {
     seed([]);
+    localStorage.setItem(INITIALIZATION_KEY, JSON.stringify({ version: 1, initialized: true }));
     if (state === 'missing') localStorage.removeItem(POSTS_KEY);
     renderApp();
     expect(screen.getByText('No posts yet — check back soon!')).toBeInTheDocument();

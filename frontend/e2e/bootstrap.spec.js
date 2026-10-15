@@ -110,8 +110,14 @@ for (const [key, raw] of [[INITIALIZATION_KEY, '{bad'], [INITIALIZATION_KEY, '{}
     await expect(page.getByText(/Local post initialization could not be completed/)).toBeVisible();
     expect(await page.evaluate((storageKey) => localStorage.getItem(storageKey), key)).toBe(raw);
     await primaryLink(page, 'Write Blog').click();
-    await expect(page.getByRole('status')).toContainText('Post changes are disabled');
-    await expect(page.getByRole('textbox')).toHaveCount(0);
+    await expect(page.getByRole('status', { name: 'Local post initialization' })).toContainText('Post changes are disabled');
+    const before = await page.evaluate(() => ({ ...localStorage }));
+    await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
+    for (const input of await page.getByRole('textbox').all()) await expect(input).toBeDisabled();
+    await page.getByRole('button', { name: 'Save' }).evaluate((button) => {
+      button.form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+    expect(await page.evaluate(() => ({ ...localStorage }))).toEqual(before);
     expect(await page.evaluate((storageKey) => localStorage.getItem(storageKey), key)).toBe(raw);
   });
 }
@@ -157,7 +163,13 @@ test('marker quota failure retains readable posts, disables deletes, and retry c
   expect(await deletes.count()).toBeGreaterThan(0);
   for (const button of await deletes.all()) await expect(button).toBeDisabled();
   await primaryLink(page, 'Write Blog').click();
-  await expect(page.getByRole('textbox')).toHaveCount(0);
+  const before = await page.evaluate(() => ({ ...localStorage }));
+  await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
+  for (const input of await page.getByRole('textbox').all()) await expect(input).toBeDisabled();
+  await page.getByRole('button', { name: 'Save' }).evaluate((button) => {
+    button.form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  });
+  expect(await page.evaluate(() => ({ ...localStorage }))).toEqual(before);
   expect(await storedPosts(page)).toEqual(posts);
   await page.evaluate(() => sessionStorage.setItem('allow-marker-write', 'true'));
   await page.reload();

@@ -4,7 +4,8 @@ import { BrowserRouter, Link, Route, Routes, matchPath, useLocation, useNavigate
 import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
-import { Navbar } from './components/Navbar.jsx';
+import { AppShell } from './components/AppShell.jsx';
+import { getInitialAppearance, toggleAppearance } from './utils/appearance.js';
 import { Notice } from './components/Notice.jsx';
 import Landing from './pages/Landing.jsx';
 import NotFound from './pages/NotFound.jsx';
@@ -39,23 +40,33 @@ const footerLinks = [
  *   Shared shell and incrementally implemented route tree.
  */
 export default function App() {
+  const [appearance, setAppearance] = useState(getInitialAppearance);
+
+  /** Request a pure in-memory transition without touching storage or route-local forms. */
+  function handleToggleAppearance() {
+    setAppearance(toggleAppearance);
+  }
+
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Shell />
+      <Shell appearance={appearance} onToggleAppearance={handleToggleAppearance} />
     </BrowserRouter>
   );
 }
 
 /**
  * Initialize local posts before mounting data views and resolve identity on known routes.
+ * Args:
+ *   appearance: App-owned transient mode applied above all route surfaces.
+ *   onToggleAppearance: App-owned storage-free transition callback.
  * Returns:
  *   The discovery shell with guarded routes, initialization warnings, and safe post controls.
  * Notes:
  *   Startup writes run only in an effect and are not retried by StrictMode effect replay.
- *   Unknown routes skip bootstrap and session invalidation. Failed startup remains read-only
+ *   Unknown routes skip bootstrap and session invalidation. Failed startup keeps posts read-only
  *   until a new shell lifecycle; route views retain their existing fresh collection reads.
  */
-function Shell() {
+function Shell({ appearance, onToggleAppearance }) {
   const [sessionRead, setSessionRead] = useState({ ok: true, value: null });
   const [logoutFailed, setLogoutFailed] = useState(false);
   const [bootstrap, setBootstrap] = useState(null);
@@ -77,6 +88,8 @@ function Shell() {
   const knownRoute = ['/', '/login', '/register', ...Object.keys(protectedViews)]
     .some((path) => matchPath({ path, end: true }, location.pathname));
   const bootstrapFailed = bootstrap !== null && !bootstrap.ok;
+  const postMutationsDisabled = bootstrapFailed && ['/write', '/edit/:id', '/blog/:id', '/blogs', '/admin']
+    .some((path) => matchPath({ path, end: true }, location.pathname));
 
   useEffect(() => {
     if (knownRoute && bootstrap === null) setBootstrap(initializeOnce());
@@ -125,25 +138,27 @@ function Shell() {
   }
 
   return (
-      <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
-        <a
-          href="#main-content"
-          className="sr-only z-30 rounded-full bg-surface p-3 focus:not-sr-only focus:absolute focus:left-4 focus:top-4"
-        >
-          Skip to content
-        </a>
-        <Navbar session={sessionRead.ok ? sessionRead.value : null} onLogout={handleLogout} />
+      <AppShell
+        appearance={appearance}
+        onToggleAppearance={onToggleAppearance}
+        session={sessionRead.ok ? sessionRead.value : null}
+        onLogout={handleLogout}
+      >
         {(!sessionRead.ok || logoutFailed || (knownRoute && bootstrapFailed)) && (
           <div className="mx-auto w-full max-w-6xl px-6 pt-4">
             {logoutFailed ? (
               <p role="alert" className="rounded-card bg-error-light p-4 text-error">
                 Logout could not be saved. Your local session has not been cleared.
               </p>
-            ) : (
-              <Notice kind="storage" />
-            )}
+            ) : !sessionRead.ok ? (
+              bootstrapFailed ? (
+                <p role="alert" className="rounded-card bg-error-light p-4 text-error">
+                  Local session could not be read. Signed-in access is unavailable.
+                </p>
+              ) : <Notice kind="storage" />
+            ) : null}
             {knownRoute && bootstrapFailed && (
-              <p className="mt-2 text-sm text-error">
+              <p role="status" aria-label="Local post initialization" className="mt-2 text-sm text-error">
                 Local post initialization could not be completed. Post changes are disabled.
                 {bootstrap.code === 'marker-write-failed' && ' Saved posts remain available; reload to retry initialization.'}
                 {bootstrap.code === 'posts-write-failed' && ' Starter posts were not saved.'}
@@ -152,40 +167,42 @@ function Shell() {
           </div>
         )}
         <main id="main-content" tabIndex={-1} className="flex-1">
-          {knownRoute && bootstrap === null ? (
-            <p role="status">Loading local posts…</p>
-          ) : (
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Login onSessionChange={handleSessionChange} />} />
-              <Route path="/register" element={<Register onSessionChange={handleSessionChange} />} />
-              {Object.keys(protectedViews).map((path) => {
-                const View = protectedViews[path];
-                return (
-                  <Route
-                    key={path}
-                    path={path}
-                    element={(
-                      <ProtectedRoute adminOnly={path === '/admin' || path === '/users'}>
-                        {bootstrapFailed && (path === '/write' || path === '/edit/:id') ? (
-                          <p role="status">Post changes are disabled until local initialization succeeds.</p>
-                        ) : (
-                          <fieldset
-                            disabled={bootstrapFailed && path !== '/users'}
-                            className="m-0 min-w-0 border-0 p-0"
-                            aria-label={bootstrapFailed && path !== '/users' ? 'Read-only posts' : undefined}
-                          >
-                            <View />
-                          </fieldset>
-                        )}
-                      </ProtectedRoute>
-                    )}
-                  />
-                );
-              })}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          )}
+          <fieldset
+            disabled={postMutationsDisabled}
+            className="m-0 min-w-0 border-0 p-0"
+            aria-label={postMutationsDisabled ? 'Read-only local data' : undefined}
+            onSubmitCapture={(event) => {
+              if (postMutationsDisabled) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
+          >
+            {knownRoute && bootstrap === null ? (
+              <p role="status">Loading local posts…</p>
+            ) : (
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/login" element={<Login onSessionChange={handleSessionChange} />} />
+                <Route path="/register" element={<Register onSessionChange={handleSessionChange} />} />
+                {Object.keys(protectedViews).map((path) => {
+                  const View = protectedViews[path];
+                  return (
+                    <Route
+                      key={path}
+                      path={path}
+                      element={(
+                        <ProtectedRoute adminOnly={path === '/admin' || path === '/users'}>
+                          <View />
+                        </ProtectedRoute>
+                      )}
+                    />
+                  );
+                })}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            )}
+          </fieldset>
         </main>
         <footer className="border-t border-border bg-surface">
           <div className="mx-auto flex max-w-6xl flex-col justify-between gap-6 px-6 py-8 sm:flex-row sm:items-center">
@@ -201,6 +218,6 @@ function Shell() {
             </nav>
           </div>
         </footer>
-      </div>
+      </AppShell>
   );
 }

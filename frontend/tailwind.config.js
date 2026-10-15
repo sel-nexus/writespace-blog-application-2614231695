@@ -6,21 +6,53 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: colors.indigo,
-        secondary: colors.violet,
+        // Keep solid brand buttons unchanged; only tonal surfaces follow appearance.
+        primary: {
+          ...colors.indigo,
+          50: 'rgb(var(--color-primary-50, 238 242 255) / <alpha-value>)',
+          100: 'rgb(var(--color-primary-100, 224 231 255) / <alpha-value>)',
+        },
+        secondary: {
+          ...colors.violet,
+          50: 'rgb(var(--color-secondary-50, 245 243 255) / <alpha-value>)',
+          100: 'rgb(var(--color-secondary-100, 237 233 254) / <alpha-value>)',
+        },
         neutral: colors.stone,
-        background: '#f8f7f4',
-        surface: '#ffffff',
-        'surface-raised': '#efeeeb',
-        foreground: '#292735',
-        'foreground-muted': '#605d6b',
-        border: '#dedce4',
-        ring: '#4f46e5',
-        success: { DEFAULT: '#166534', light: '#f0fdf4' },
-        warning: { DEFAULT: '#854d0e', light: '#fefce8' },
-        error: { DEFAULT: '#991b1b', light: '#fef2f2' },
-        info: { DEFAULT: '#3730a3', light: '#eef2ff' },
+        background: 'rgb(var(--color-background, 248 247 244) / <alpha-value>)',
+        surface: 'rgb(var(--color-surface, 255 255 255) / <alpha-value>)',
+        'surface-raised': 'rgb(var(--color-surface-raised, 239 238 235) / <alpha-value>)',
+        foreground: 'rgb(var(--color-foreground, 41 39 53) / <alpha-value>)',
+        'foreground-muted': 'rgb(var(--color-foreground-muted, 96 93 107) / <alpha-value>)',
+        border: 'rgb(var(--color-border, 222 220 228) / <alpha-value>)',
+        ring: 'rgb(var(--color-ring, 79 70 229) / <alpha-value>)',
+        success: {
+          DEFAULT: 'rgb(var(--color-success, 22 101 52) / <alpha-value>)',
+          light: 'rgb(var(--color-success-light, 240 253 244) / <alpha-value>)',
+        },
+        warning: {
+          DEFAULT: 'rgb(var(--color-warning, 133 77 14) / <alpha-value>)',
+          light: 'rgb(var(--color-warning-light, 254 252 232) / <alpha-value>)',
+        },
+        error: {
+          DEFAULT: 'rgb(var(--color-error, 153 27 27) / <alpha-value>)',
+          light: 'rgb(var(--color-error-light, 254 242 242) / <alpha-value>)',
+        },
+        info: {
+          DEFAULT: 'rgb(var(--color-info, 55 48 163) / <alpha-value>)',
+          light: 'rgb(var(--color-info-light, 238 242 255) / <alpha-value>)',
+        },
         'focal-pink': '#f9a8d4',
+      },
+      // Link accents need brighter dark values, unlike solid button backgrounds.
+      textColor: {
+        primary: {
+          700: 'rgb(var(--color-primary-text-700, 67 56 202) / <alpha-value>)',
+          800: 'rgb(var(--color-primary-text-800, 55 48 163) / <alpha-value>)',
+        },
+        secondary: {
+          700: 'rgb(var(--color-secondary-text-700, 109 40 217) / <alpha-value>)',
+          800: 'rgb(var(--color-secondary-text-800, 91 33 182) / <alpha-value>)',
+        },
       },
       fontFamily: {
         display: ['Georgia', 'Cambria', 'serif'],

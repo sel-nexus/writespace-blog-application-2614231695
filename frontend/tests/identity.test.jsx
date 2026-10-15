@@ -13,7 +13,7 @@ import {
   ACCOUNT_SIGN_IN_INCOMPLETE, getSession, INVALID_CREDENTIALS, login, logout,
   register, sessionForUser, SIGN_IN_UNSAVED,
 } from '../src/utils/auth.js';
-import { DEMO_ADMIN, readCollection, SESSION_KEY, USERS_KEY, writeValue } from '../src/utils/storage.js';
+import { DEMO_ADMIN, INITIALIZATION_KEY, POSTS_KEY, readCollection, SESSION_KEY, USERS_KEY, writeValue } from '../src/utils/storage.js';
 import { session, user } from './fixtures.js';
 
 const registration = { displayName: ' Robin Writer ', username: ' ROBIN ', password: ' demo ', confirmPassword: ' demo ' };
@@ -394,11 +394,15 @@ describe('identity forms and shell interactions', () => {
 
   it('registers through actual fields, hides role selector, updates navbar, and survives shell remount', async () => {
     const actor = userEvent.setup();
+    // This identity workflow starts from an intentionally empty, initialized blog.
+    localStorage.setItem(POSTS_KEY, '[]');
+    localStorage.setItem(INITIALIZATION_KEY, JSON.stringify({ version: 1, initialized: true }));
+    const before = { ...localStorage };
     window.history.replaceState({}, '', '/register');
     const view = render(<App />);
     expect(screen.getByRole('note')).toHaveTextContent(DEMO_MESSAGE);
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-    expect(localStorage.length).toBe(0);
+    expect({ ...localStorage }).toEqual(before);
     await fillAccount(actor);
     await actor.click(screen.getByRole('button', { name: 'Create account' }));
     expect(window.location.pathname).toBe('/blogs');

@@ -4,6 +4,10 @@ import PropTypes from 'prop-types';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { BookOpen, List, X } from '@phosphor-icons/react';
 import { RoleAvatar } from './RoleAvatar.jsx';
+import { AppearanceToggle } from './AppearanceToggle.jsx';
+
+/** Preserve optional additive appearance props for isolated navigation callers. */
+function ignoreAppearanceToggle() {}
 
 const linkStyle = 'rounded-full px-4 py-2 text-sm font-bold hover:bg-surface-raised '
   + 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring';
@@ -18,10 +22,17 @@ function navigationStyle({ isActive }) {
  * Args:
  *   session: Valid resolved session or null.
  *   onLogout: Explicit action callback; parent owns persistence and error state.
+ *   appearance: Optional current mode, defaulting light for existing isolated callers.
+ *   onToggleAppearance: Optional callback; the application supplies its shared state transition.
  * Returns:
  *   Responsive shared header, with no storage access.
  */
-export function Navbar({ session = null, onLogout }) {
+export function Navbar({
+  session = null,
+  onLogout,
+  appearance = 'light',
+  onToggleAppearance = ignoreAppearanceToggle,
+}) {
   const [open, setOpen] = useState(false);
   const location = useLocation();
   useEffect(() => {
@@ -63,16 +74,19 @@ export function Navbar({ session = null, onLogout }) {
             WriteSpace
           </span>
         </Link>
-        <button
-          type="button"
-          aria-label={open ? 'Close menu' : 'Open menu'}
-          aria-expanded={open}
-          aria-controls="primary-navigation"
-          onClick={() => setOpen(!open)}
-          className={`${linkStyle} md:hidden`}
-        >
-          {open ? <X size={24} aria-hidden="true" /> : <List size={24} aria-hidden="true" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <AppearanceToggle appearance={appearance} onToggle={onToggleAppearance} />
+          <button
+            type="button"
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            aria-expanded={open}
+            aria-controls="primary-navigation"
+            onClick={() => setOpen(!open)}
+            className={`${linkStyle} md:hidden`}
+          >
+            {open ? <X size={24} aria-hidden="true" /> : <List size={24} aria-hidden="true" />}
+          </button>
+        </div>
         <nav
           id="primary-navigation"
           aria-label="Primary"
@@ -108,4 +122,6 @@ Navbar.propTypes = {
     role: PropTypes.oneOf(['user', 'admin']).isRequired,
   }),
   onLogout: PropTypes.func.isRequired,
+  appearance: PropTypes.oneOf(['light', 'dark']),
+  onToggleAppearance: PropTypes.func,
 };
