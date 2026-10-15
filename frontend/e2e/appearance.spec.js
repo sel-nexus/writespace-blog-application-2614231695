@@ -194,7 +194,7 @@ for (const width of [390, 768, 1280]) {
     const toggle = page.getByRole('button', { name: 'Switch to dark mode' });
     await toggle.focus();
     await page.keyboard.press('Enter');
-    await expect(toggle).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Switch to light mode' })).toBeFocused();
     await mode(page, 'dark');
     if (width < 768) {
       await expect(page.getByRole('navigation', { name: 'Primary' })).toBeHidden();
