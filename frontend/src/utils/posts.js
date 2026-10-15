@@ -139,6 +139,7 @@ export function getAuthorRole(post, users = []) {
  * Returns:
  *   Success with sorted remaining value; failure with code and optional readFailed: true.
  *   A declined confirmation returns {ok: false, code: 'cancelled'} without writing.
+ *   Throwing/unavailable confirmation returns {ok: false, code: 'confirmation-unavailable'} without writing.
  * Notes:
  *   Confirmation happens once inside this service, only after validation and permission checks.
  *   Read failures never mutate posts; write failures never report a durable success.
@@ -154,7 +155,11 @@ export function deletePost(id, session) {
   const matching = current.value && session
     && ['userId', 'username', 'displayName', 'role'].every((field) => current.value[field] === session[field]);
   if (!matching || !canManagePost(current.value, post)) return { ok: false, code: 'unauthorized' };
-  if (!window.confirm('Delete this post? This cannot be undone.')) return { ok: false, code: 'cancelled' };
+  try {
+    if (!window.confirm('Delete this post? This cannot be undone.')) return { ok: false, code: 'cancelled' };
+  } catch {
+    return { ok: false, code: 'confirmation-unavailable' };
+  }
   const value = posts.value.filter((record) => record.id !== id);
   const saved = writeValue(POSTS_KEY, value);
   return saved.ok ? { ok: true, value: sortPosts(value) } : saved;

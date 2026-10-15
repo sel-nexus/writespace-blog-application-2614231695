@@ -8,9 +8,10 @@ const DEMO_MESSAGE = 'Demo only: do not enter real passwords or sensitive inform
   + 'Accounts and posts are stored in this browser and are not protected or synced.';
 const STORAGE_WARNING = 'Local data could not be read. It has not been changed.';
 const tagline = 'Your thoughts. Your space. Beautifully simple.';
+const initializedEmptyFixture = { writespace_bootstrap_v1: JSON.stringify({ version: 1, initialized: true }) };
 
 test('empty discovery and CTA/footer navigation execute only after activation', async ({ page }, testInfo) => {
-  await seedLocalData(page);
+  await seedLocalData(page, initializedEmptyFixture);
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(tagline);
   for (const name of ['Write Freely', 'Private & Local', 'Instant & Fast']) {
@@ -19,7 +20,7 @@ test('empty discovery and CTA/footer navigation execute only after activation', 
   await expect(page.getByText('No posts yet — check back soon!')).toBeVisible();
   await expect(page.getByRole('note')).toHaveText(DEMO_MESSAGE);
   await expect(page).toHaveURL(/\/$/);
-  expect(await page.evaluate(() => localStorage.length)).toBe(0);
+  expect(await page.evaluate(() => ({ ...localStorage }))).toEqual(initializedEmptyFixture);
   await captureView(page, testInfo, 'empty-desktop');
 
   const primary = page.getByRole('navigation', { name: 'Primary' });
@@ -147,7 +148,7 @@ test('resolved registered identity offers role home and logout persists across r
 for (const [name, raw] of [['empty', null], ['corrupt', '{broken mobile posts']]) {
   test(`mobile ${name} discovery remains readable without overflow`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await seedLocalData(page, raw === null ? {} : { [POSTS_KEY]: raw });
+    await seedLocalData(page, raw === null ? initializedEmptyFixture : { [POSTS_KEY]: raw });
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(tagline);
     if (raw === null) {
@@ -197,7 +198,7 @@ for (const [entry, path, heading] of [
   ['/users', '/login', 'Sign in'],
 ]) {
   test(`production direct entry ${entry} receives the correct SPA view or guest redirect`, async ({ page }) => {
-    await seedLocalData(page);
+    await seedLocalData(page, initializedEmptyFixture);
     const response = await page.goto(entry);
     expect(response.status()).toBe(200);
     await expect(page).toHaveURL(new RegExp(`${path}$`));
@@ -205,6 +206,6 @@ for (const [entry, path, heading] of [
     await page.getByRole('navigation', { name: 'Footer' }).getByRole('link', { name: 'Home', exact: true }).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(tagline);
-    expect(await page.evaluate(() => localStorage.length)).toBe(0);
+    expect(await page.evaluate(() => ({ ...localStorage }))).toEqual(initializedEmptyFixture);
   });
 }

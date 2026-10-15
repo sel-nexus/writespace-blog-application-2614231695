@@ -216,7 +216,7 @@ test('ordinary initial direct users entry returns to blogs without administrator
 
 test('missing users stay missing on read and show the display-only fixed administrator and empty state', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await seedLocalData(page);
+  await seedLocalData(page, { writespace_bootstrap_v1: JSON.stringify({ version: 1, initialized: true }) });
   await page.goto('/login');
   await signIn(page);
   await page.getByRole('navigation', { name: 'Quick actions' }).getByRole('link', { name: 'Manage users' }).click();

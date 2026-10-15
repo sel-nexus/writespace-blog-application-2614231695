@@ -58,7 +58,7 @@ async function seedWriter(page, posts = [post], session = identity) {
 }
 
 test('guest registers, writes, reads, edits, reloads and deletes with exact persisted identity', async ({ page }, testInfo) => {
-  await seedLocalData(page);
+  await seedLocalData(page, { writespace_bootstrap_v1: JSON.stringify({ version: 1, initialized: true }) });
   await page.goto('/');
   expect(await stored(page)).toEqual({ posts: null, users: null, session: null });
   await page.getByRole('link', { name: 'Get Started Free' }).click();

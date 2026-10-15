@@ -230,7 +230,7 @@ test('ordinary writer direct admin entry returns to blogs with no administrator 
 
 test('mobile missing collections show verified zeros and an explicit empty preview without seeding rows', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await seedLocalData(page);
+  await seedLocalData(page, { writespace_bootstrap_v1: JSON.stringify({ version: 1, initialized: true }) });
   await page.goto('/login');
   await signInAdmin(page);
   for (const label of ['Total Posts', 'Registered Users', 'Published Posts', 'Drafts']) {

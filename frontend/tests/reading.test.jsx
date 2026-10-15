@@ -155,6 +155,27 @@ const malformed = [
     expect(localStorage.getItem(POSTS_KEY)).toBe(before);
   });
 
+  it.each(['throwing', 'unavailable'])('returns a structured failure without writes for %s confirmation', (capability) => {
+    const posts = [makePost(1), post, makePost(3)];
+    seed(posts);
+    const keys = [POSTS_KEY, SESSION_KEY, USERS_KEY];
+    const before = keys.map((key) => localStorage.getItem(key));
+    const write = vi.spyOn(Storage.prototype, 'setItem');
+    const confirm = vi.spyOn(window, 'confirm').mockImplementation(() => { throw new Error('Blocked'); });
+    if (capability === 'unavailable') window.confirm = undefined;
+    try {
+      expect(deletePost(post.id, session)).toEqual({ ok: false, code: 'confirmation-unavailable' });
+      expect(keys.map((key) => localStorage.getItem(key))).toEqual(before);
+      expect(JSON.parse(localStorage.getItem(POSTS_KEY))).toEqual(posts);
+      expect(JSON.parse(localStorage.getItem(SESSION_KEY))).toEqual(session);
+      expect(readPost(post.id)).toEqual({ ok: true, source: 'stored', value: post });
+      expect(write).not.toHaveBeenCalled();
+      if (capability === 'throwing') expect(confirm).toHaveBeenCalledTimes(1);
+    } finally {
+      confirm.mockRestore();
+    }
+  });
+
   it.each([undefined, null, 5, false, {}, [], '', '  '].map((id) => [id]))('rejects invalid deletion ID %j without actions', (id) => {
     seed();
     const confirm = vi.spyOn(window, 'confirm');
@@ -441,6 +462,30 @@ const malformed = [
     expect(readPosts().value).toEqual([]);
     expect(screen.queryByRole('heading', { name: post.title })).not.toBeInTheDocument();
     expect(screen.getByText('No posts yet — check back soon!')).toBeInTheDocument();
+  });
+
+  it.each(['/blogs', `/blog/${post.id}`])('shows failure and retains the post and route at %s when confirmation throws', async (path) => {
+    seed();
+    const actor = userEvent.setup();
+    const confirm = vi.spyOn(window, 'confirm').mockImplementation(() => { throw new Error('Blocked'); });
+    renderApp(path);
+    const keys = [POSTS_KEY, SESSION_KEY, USERS_KEY];
+    const before = keys.map((key) => localStorage.getItem(key));
+    const write = vi.spyOn(Storage.prototype, 'setItem');
+    const title = screen.getByRole('heading', { name: post.title });
+    const text = screen.getByText(/First line/).textContent;
+    expect(confirm).not.toHaveBeenCalled();
+    await actor.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('alert').textContent).toBe('Post could not be deleted. Nothing was saved.');
+    expect(window.location.pathname).toBe(path);
+    expect(screen.getByRole('heading', { name: post.title })).toBe(title);
+    expect(screen.getByText(/First line/).textContent).toBe(text);
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled();
+    expect(readPosts().value).toEqual([post]);
+    expect(JSON.parse(localStorage.getItem(SESSION_KEY))).toEqual(session);
+    expect(keys.map((key) => localStorage.getItem(key))).toEqual(before);
+    expect(write).not.toHaveBeenCalled();
   });
 
   it.each([

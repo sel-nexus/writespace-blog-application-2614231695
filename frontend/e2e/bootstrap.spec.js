@@ -15,6 +15,11 @@ function primaryLink(page, name) {
   return page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name });
 }
 
+/** Locate an exact label's paired displayed count in the dashboard definition list. */
+function metric(page, label) {
+  return page.locator('dl > div').filter({ has: page.getByText(label, { exact: true }) }).locator('dd');
+}
+
 /** Inject genuine browser storage exceptions for one key and operation. */
 async function denyStorage(page, key, operation, name) {
   await page.addInitScript(({ failedKey, method, errorName }) => {
@@ -56,16 +61,20 @@ test('admin deletes every starter and reload preserves empty discovery and zero 
   await expect(page.getByRole('link', { name: 'Welcome to WriteSpace' })).toBeVisible();
   const posts = await storedPosts(page);
   await primaryLink(page, 'Dashboard').click();
+  await expect(page).toHaveURL(/\/admin$/);
   await expect(page.getByRole('heading', { name: /admin dashboard/i })).toBeVisible();
-  await expect(page.getByText('Total Posts', { exact: true }).locator('..')).toContainText(String(posts.length));
-  await expect(page.getByText('Registered Users', { exact: true }).locator('..')).toContainText('0');
+  await expect(metric(page, 'Total Posts')).toHaveText(String(posts.length));
+  await expect(metric(page, 'Registered Users')).toHaveText('0');
   page.on('dialog', (dialog) => dialog.accept());
   for (let index = 0; index < posts.length; index += 1) {
     await page.getByRole('button', { name: /delete/i }).first().click();
+    await expect(page).toHaveURL(/\/blogs$/);
     await expect.poll(async () => (await storedPosts(page)).length).toBe(posts.length - index - 1);
   }
-  await expect(page.getByText('Total Posts', { exact: true }).locator('..')).toContainText('0');
-  await expect(page.getByText('Published Posts', { exact: true }).locator('..')).toContainText('0');
+  await primaryLink(page, 'Dashboard').click();
+  await expect(page).toHaveURL(/\/admin$/);
+  await expect(metric(page, 'Total Posts')).toHaveText('0');
+  await expect(metric(page, 'Published Posts')).toHaveText('0');
   await primaryLink(page, 'Home').click();
   await expect(page.getByText('No posts yet — check back soon!')).toBeVisible();
   await page.reload();
